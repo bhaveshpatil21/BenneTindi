@@ -43,6 +43,15 @@ a{color:inherit;text-decoration:none}
              object-fit:cover;object-position:var(--bg-focus);
              opacity:0;transition:opacity .9s ease}
 .scene video.on{opacity:1}
+/* carousel — each slide is its own layer, so a dissolve is just two
+   opacities crossing. Nothing ever cuts. */
+.slides{position:absolute;inset:0;opacity:0;transition:opacity 1.2s ease}
+.slides.on{opacity:1}
+.slide{position:absolute;inset:0;background-size:cover;
+       background-position:var(--bg-focus);background-repeat:no-repeat;
+       opacity:0;transition:opacity var(--dissolve,2.4s) ease-in-out;
+       will-change:opacity}
+.slide.on{opacity:1}
 .wash{
   position:fixed;inset:0;z-index:1;pointer-events:none;
   background:
@@ -92,9 +101,11 @@ a{color:inherit;text-decoration:none}
   width:min(95vw,880px);border-radius:999px;
   padding:12px clamp(14px,1.6vw,20px);
   display:grid;align-items:center;
-  grid-template-columns:auto minmax(0,1fr) minmax(0,1.25fr) auto auto;
-  gap:clamp(12px,1.6vw,20px);
+  /* five children: cover · meta · track · keys · tools */
+  grid-template-columns:auto minmax(0,1fr) minmax(0,1.15fr) auto auto;
+  gap:clamp(10px,1.4vw,18px);
 }
+.tools{display:flex;align-items:center;gap:clamp(2px,.6vw,6px)}
 .cover{width:56px;height:56px;border-radius:50%;overflow:hidden;flex:none;
        background:rgba(255,255,255,.09);border:1px solid var(--edge);
        box-shadow:0 6px 18px rgba(0,0,0,.45)}
@@ -171,6 +182,23 @@ body.playing .cover{animation:rot 24s linear infinite}
              transition:opacity .18s}
 .mine button:hover{opacity:.86}
 
+/* set / test the API key without touching code */
+.keyrow{display:none;gap:8px;margin-top:8px}
+.keyrow.on{display:flex}
+.keyrow input{flex:1;min-width:0;background:rgba(255,255,255,.08);color:#fff;font:inherit;
+              font-size:12.5px;border:1px solid rgba(255,255,255,.12);border-radius:999px;
+              padding:9px 14px;letter-spacing:.08em}
+.keyrow input::placeholder{color:var(--faint);letter-spacing:0}
+.keyrow input:focus{outline:none;border-color:rgba(255,255,255,.45)}
+.keyrow button{padding:9px 16px;border-radius:999px;font-size:11px;letter-spacing:.12em;
+               text-transform:uppercase;background:#fff;color:#2a1a12;font-weight:600}
+.keyrow button.ghost{background:rgba(255,255,255,.10);color:#fff;
+                     border:1px solid rgba(255,255,255,.18)}
+.keystat{font-size:11.5px;line-height:1.5;color:var(--muted);padding:8px 4px 0;display:none}
+.keystat.on{display:block}
+.keystat b{color:#fff;font-weight:600}
+.keystat a{text-decoration:underline}
+
 .qlist{overflow-y:auto;overscroll-behavior:contain;padding:8px;flex:1;
        scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
 .qlist::-webkit-scrollbar{width:8px}
@@ -226,22 +254,25 @@ body.playing .row[aria-current="true"] .eq i{animation:bounce .9s ease-in-out in
 #yt{position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-200px;left:-200px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
-@media (max-width:780px){
-  .pill{grid-template-columns:auto minmax(0,1fr) auto;gap:12px;
-        border-radius:26px;padding:13px 15px}
-  .track{grid-column:1/-1;order:3}
-  .keys{order:2}
-  .k.list{order:4}
-  .cover{width:48px;height:48px}
+@media (max-width:820px){
+  /* row 1: art + title + tools · row 2: seek · row 3: transport */
+  .pill{grid-template-columns:auto minmax(0,1fr) auto;
+        gap:10px 12px;border-radius:24px;padding:13px 15px}
+  .cover{grid-area:1/1;width:46px;height:46px}
+  .meta {grid-area:1/2}
+  .tools{grid-area:1/3}
+  .track{grid-area:2/1/2/4}
+  .keys {grid-area:3/1/3/4;justify-content:center;gap:14px}
 }
 @media (max-width:520px){
   .clock,.online span:last-child{font-size:13px}
   .out a span{display:none}
   .out{gap:16px;min-width:0}
   .clock{min-width:0}
-  .keys{gap:4px}
-  .k{width:34px;height:34px}
-  .k.big{width:46px;height:46px}
+  .k{width:36px;height:36px}
+  .k svg{width:18px;height:18px}
+  .k.big{width:48px;height:48px}
+  .tools{gap:0}
   .spot iframe{height:232px}
   .queue{max-height:58vh}
   .row{grid-template-columns:22px 38px minmax(0,1fr) auto;gap:9px}
@@ -257,6 +288,7 @@ body.playing .row[aria-current="true"] .eq i{animation:bounce .9s ease-in-out in
 
 <div class="scene" aria-hidden="true">
   <video id="bg" autoplay muted loop playsinline preload="auto" disablepictureinpicture></video>
+  <div class="slides" id="slides"></div>
 </div>
 <div class="wash"></div>
 <div class="vignette"></div>
@@ -304,6 +336,16 @@ body.playing .row[aria-current="true"] .eq i{animation:bounce .9s ease-in-out in
         <input id="plUrl" type="search" placeholder="search a song, or paste a YouTube link" autocomplete="off" spellcheck="false">
         <button id="plGo">Go</button>
       </div>
+      <div class="keyrow" id="keyrow">
+        <input id="driveIn" type="url" placeholder="paste a shared Google Drive folder link (photos)" autocomplete="off" spellcheck="false">
+        <button id="driveGo">Load</button>
+      </div>
+      <div class="keyrow" id="keyrow2">
+        <input id="keyIn" type="password" placeholder="YouTube Data API v3 key" autocomplete="off" spellcheck="false">
+        <button id="keySave">Set</button>
+        <button id="keyTest" class="ghost">Test</button>
+      </div>
+      <div class="keystat" id="keystat"></div>
     </div>
     <div class="qlist" id="qlist"></div>
   </section>
@@ -341,14 +383,19 @@ body.playing .row[aria-current="true"] .eq i{animation:bounce .9s ease-in-out in
       <button class="k" id="next" aria-label="Next track">
         <svg viewBox="0 0 24 24"><path d="M15.5 6H18v12h-2.5zM5.5 6v12L15 12z"/></svg>
       </button>
+    </div>
+
+    <div class="tools">
       <button class="k" id="radio" aria-label="Play more like this" title="More like this">
         <svg viewBox="0 0 24 24"><path d="M12 10a2 2 0 100 4 2 2 0 000-4zM7.8 6.3 6.4 4.9a10 10 0 000 14.2l1.4-1.4a8 8 0 010-11.4zm8.4 0a8 8 0 010 11.4l1.4 1.4a10 10 0 000-14.2zM10 8.6 8.6 7.2a6.8 6.8 0 000 9.6L10 15.4a4.8 4.8 0 010-6.8zm5.4-1.4L14 8.6a4.8 4.8 0 010 6.8l1.4 1.4a6.8 6.8 0 000-9.6z"/></svg>
       </button>
-    </div>
-
-    <button class="k list" id="toggle" aria-label="Show tracks" aria-expanded="false" aria-controls="queue">
+      <button class="k" id="find2" aria-label="Search for a song" title="Search">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"/></svg>
+      </button>
+      <button class="k" id="toggle" aria-label="Show tracks" aria-expanded="false" aria-controls="queue">
       <svg viewBox="0 0 24 24"><path d="M3 6h13v2H3zm0 5h13v2H3zm0 5h9v2H3zm15-9.5L23 11h-3v8h-2v-8h-3z"/></svg>
-    </button>
+       </button>
+    </div>
   </div>
 </div>
 
@@ -704,10 +751,156 @@ function tune(i){
      · a video link / ID → starts a radio mix seeded from that song
      · anything else     → a search, which needs the key below
    Searching is the only part that needs a key, because the IFrame player has
-   no search of its own. Get one at console.cloud.google.com (YouTube Data
-   API v3), restrict it to your domain, and paste it here. Free quota is
-   10,000 units/day and a search costs 100, so ~100 searches a day. */
-const YT_KEY = '';
+   no search of its own. This key is visible to anyone who views source — that
+   is unavoidable in a browser app, so it MUST be locked to your domain under
+   Credentials → Website restrictions in the Google Cloud console.
+   Free quota is 10,000 units/day and a search costs 100, so ~100 searches a
+   day. Repeat queries come from the cache below and cost nothing. */
+/* ══════════ BACKDROP CAROUSEL ══════════
+   Put image URLs here and they cross-dissolve behind everything, replacing
+   the video. Leave it empty and the video loop plays instead.
+   Or paste a shared Drive folder link in the app — see DRIVE_FOLDER below. */
+const SLIDES       = [];      // e.g. ['pic1.jpg','pic2.jpg']
+const DRIVE_FOLDER = '';      // e.g. '1AbC...'  (folder id, not the whole URL)
+const HOLD    = 7000;         // ms each image rests
+const DISSOLVE = 2400;        // ms of cross-fade
+
+let slideTimer = null;
+
+/* Only starts once every image has decoded, so the first dissolve is never
+   a fade from blank. */
+async function carousel(urls){
+  const box = $('slides');
+  clearInterval(slideTimer);
+  box.innerHTML = ''; box.classList.remove('on');
+  if (!urls.length){ $('bg').classList.add('on'); return; }
+
+  document.documentElement.style.setProperty('--dissolve', DISSOLVE + 'ms');
+  const ok = [];
+  await Promise.all(urls.map(u => new Promise(res => {
+    const im = new Image();
+    im.onload  = () => { ok.push(u); res(); };
+    im.onerror = () => res();
+    im.src = u;
+  })));
+  if (!ok.length){ keyStat('None of those images could load — check the folder is shared.'); return; }
+
+  ok.forEach((u, n) => {
+    const d = document.createElement('div');
+    d.className = 'slide' + (n ? '' : ' on');
+    d.style.backgroundImage = `url("${u}")`;
+    box.appendChild(d);
+  });
+  box.classList.add('on');
+  $('bg').classList.remove('on');          // video steps aside, still dissolving
+  if (ok.length === 1) return;
+
+  let i = 0;
+  const kids = [...box.children];
+  slideTimer = setInterval(() => {
+    kids[i].classList.remove('on');
+    i = (i + 1) % kids.length;
+    kids[i].classList.add('on');
+  }, HOLD + DISSOLVE);
+}
+
+/* Drive gives no directory listing without the API, so this asks Drive for
+   the folder's contents. The folder must be shared "Anyone with the link",
+   and the Drive API must be enabled on the same key as search. */
+const RE_FOLDER = /folders\/([A-Za-z0-9_-]{10,})|[?&]id=([A-Za-z0-9_-]{10,})/;
+
+async function loadDrive(raw){
+  const m = String(raw).match(RE_FOLDER);
+  const id = m ? (m[1] || m[2]) : (/^[A-Za-z0-9_-]{10,}$/.test(raw.trim()) ? raw.trim() : '');
+  if (!id) return keyStat('That doesn\u2019t look like a Drive folder link.');
+  if (!ytKey) return keyStat('A Google API key is needed to read the folder — set one below.');
+
+  keyStat('Reading the folder\u2026');
+  try{
+    const u = 'https://www.googleapis.com/drive/v3/files'
+            + '?q=' + encodeURIComponent(`'${id}' in parents and mimeType contains 'image/'`)
+            + '&fields=files(id,name)&orderBy=name&pageSize=60&key=' + ytKey;
+    const r = await fetch(u);
+    if (!r.ok){
+      let reason = '';
+      try{ const j = await r.json(); reason = j.error?.errors?.[0]?.reason || j.error?.status || ''; }catch(_){}
+      if (/SERVICE_DISABLED|accessNotConfigured/i.test(reason))
+        return keyStat('<b>Google Drive API is not enabled</b> on this key. Console \u2192 Library \u2192 Google Drive API \u2192 Enable. (Separate from the YouTube one.)');
+      if (/notFound|forbidden/i.test(reason))
+        return keyStat('Folder not readable — set it to <b>Anyone with the link \u2192 Viewer</b>.');
+      return keyStat(apiFault(r.status, reason));
+    }
+    const files = (await r.json()).files || [];
+    if (!files.length) return keyStat('No images in that folder.');
+    /* This endpoint serves Drive images with the right headers for CSS. */
+    await carousel(files.map(f => `https://drive.google.com/thumbnail?id=${f.id}&sz=w1920`));
+    keyStat(`<b>${files.length} photos</b> loaded, dissolving every ${(HOLD+DISSOLVE)/1000|0}s.`);
+  }catch(e){ keyStat(netFault(e)); }
+}
+$('driveGo').onclick = () => loadDrive($('driveIn').value);
+$('driveIn').addEventListener('keydown', e => { if (e.key === 'Enter') loadDrive($('driveIn').value); });
+
+let ytKey = 'AIzaSyDrJqfYPcp0Eg-mNOWLxxvfJmE2xJMtXNU';
+const SEEN = new Map();
+
+/* Turns any failure into plain English. The four things that actually go
+   wrong, in the order they usually do. */
+function apiFault(status, reason){
+  if (/SERVICE_DISABLED|accessNotConfigured/i.test(reason))
+    return 'YouTube Data API v3 is <b>not enabled</b> on this key\u2019s Google Cloud project. ' +
+           'Console \u2192 APIs &amp; Services \u2192 Library \u2192 YouTube Data API v3 \u2192 Enable.';
+  if (/quotaExceeded|dailyLimitExceeded/i.test(reason))
+    return 'Today\u2019s quota is spent (100 searches). It resets at midnight Pacific.';
+  if (/ipRefererBlocked|referer|requestDenied/i.test(reason))
+    return 'The key is restricted and <b>this address is not on its allowed list</b>. ' +
+           'Add it under Credentials \u2192 Website restrictions, or drop restrictions while testing.';
+  if (/keyInvalid|badRequest|API_KEY_INVALID/i.test(reason) || status === 400)
+    return 'The key was <b>rejected</b> \u2014 check for a stray space or a truncated paste.';
+  return 'API said: ' + (reason || ('HTTP ' + status));
+}
+
+/* A fetch that never reaches Google throws TypeError, which means the page
+   was blocked before the request left \u2014 a preview sandbox, an extension,
+   or no connection. Worth naming, because it looks identical to a bad key. */
+function netFault(e){
+  return /Failed to fetch|NetworkError|Load failed/i.test(e.message)
+    ? 'The browser <b>blocked the request before it left</b>. Previews and sandboxes often ' +
+      'forbid outside calls \u2014 try the deployed site, or open the file over http://localhost.'
+    : e.message;
+}
+
+function keyStat(html){
+  const s = $('keystat');
+  s.innerHTML = html; s.classList.toggle('on', !!html);
+}
+
+$('keySave').onclick = () => {
+  const v = $('keyIn').value.trim();
+  if (!v) return keyStat('Paste a key first.');
+  ytKey = v; SEEN.clear();
+  keyStat('Key set for this visit. To keep it, replace <b>ytKey</b> at the top of the script.');
+};
+
+$('keyTest').onclick = async () => {
+  if (!ytKey) return keyStat('No key set.');
+  keyStat('Testing\u2026');
+  try{
+    const r = await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video'
+                        + '&maxResults=1&q=test&key=' + ytKey);
+    if (r.ok) return keyStat('<b>Working.</b> Search is live.');
+    let reason = '';
+    try{ const j = await r.json(); reason = j.error?.errors?.[0]?.reason || j.error?.status || ''; }catch(_){}
+    keyStat(apiFault(r.status, reason));
+  }catch(e){ keyStat(netFault(e)); }
+};
+
+/* The search button on the player jumps straight here. */
+$('find2').onclick = () => {
+  tune(6);
+  openQueue();
+  $('keyrow').classList.add('on');
+  setTimeout(() => $('plUrl').focus(), 60);
+};
 
 /* YouTube builds an endless "mix" for any video under the id RD<videoId>.
    That is the similar-songs engine, and it needs no key at all. */
@@ -750,29 +943,45 @@ $('plUrl').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 
 async function search(q){
   const list = $('qlist');
-  if (!YT_KEY){
-    list.innerHTML =
-      '<div class="empty">Searching by name needs a YouTube API key — see YT_KEY in the code.' +
-      '<br><br>Meanwhile, paste any YouTube link here and it will play, then keep going with similar songs.</div>';
-    if (!$('queue').classList.contains('open')) openQueue();
+  const key = q.toLowerCase();
+  if (!$('queue').classList.contains('open')) openQueue();
+  $('keyrow').classList.add('on');
+
+  if (!ytKey){
+    list.innerHTML = '<div class="empty">No API key set — add one below, ' +
+                     'or paste a YouTube link to play a song and hear similar ones.</div>';
     return;
   }
+  /* Every search costs 100 of the 10,000 daily units, so never pay twice. */
+  if (SEEN.has(key)) return results(SEEN.get(key));
+
   list.innerHTML = '<div class="empty">Searching…</div>';
-  if (!$('queue').classList.contains('open')) openQueue();
   try{
     const u = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video'
             + '&videoEmbeddable=true&videoCategoryId=10&maxResults=20&q='
-            + encodeURIComponent(q) + '&key=' + YT_KEY;
+            + encodeURIComponent(q) + '&key=' + ytKey;
     const r = await fetch(u);
-    if (!r.ok) throw new Error(r.status === 403 ? 'quota or key rejected' : 'HTTP ' + r.status);
+
+    if (!r.ok){
+      let reason = '';
+      try{ const j = await r.json(); reason = j.error?.errors?.[0]?.reason || j.error?.status || ''; }catch(_){}
+      list.innerHTML = '<div class="empty">Search unavailable.</div>';
+      keyStat(apiFault(r.status, reason));
+      return;
+    }
+
     const items = (await r.json()).items || [];
     if (!items.length){ list.innerHTML = '<div class="empty">Nothing found.</div>'; return; }
-    results(items.map(i => ({
+    const out = items.map(i => ({
       id: i.id.videoId,
       ...tidy(i.snippet.title || '', i.snippet.channelTitle || '')
-    })));
+    }));
+    SEEN.set(key, out);
+    keyStat('');
+    results(out);
   }catch(e){
-    list.innerHTML = '<div class="empty">Search failed — ' + e.message + '.</div>';
+    list.innerHTML = '<div class="empty">Search unavailable.</div>';
+    keyStat(netFault(e));
   }
 }
 
@@ -823,6 +1032,8 @@ function stopSpotify(){ const f = $('spotMount').firstChild; if (f) f.src = f.sr
    the first interaction starts it and the still shows until then. */
 (function backdrop(){
   const v = $('bg');
+  if (SLIDES.length)          carousel(SLIDES);
+  else if (DRIVE_FOLDER)      loadDrive(DRIVE_FOLDER);
   if (!v || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   v.muted = true;                       // property, not just the attribute
   v.src = BACKDROP;
