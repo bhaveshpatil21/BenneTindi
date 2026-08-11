@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Benne Tindi</title>
+<meta name="description" content="Benne Tindi — the songs that play at Indian cafés.">
+<meta property="og:title" content="Benne Tindi">
+<meta property="og:description" content="The songs that play at Indian cafés.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* The backdrop. Swap this file to re-skin the whole café. */
+  --bg-image: url('./benne-tindi.jpg');
+  --bg-focus: center 44%;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:#160d10;color:#fff;
+  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+  overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:6px}
+
+/* ══════════ BACKDROP ══════════ */
+.scene{position:fixed;inset:0;z-index:0;overflow:hidden;background:#2a0f0c}
+/* the hand-drawn scene is the fallback if the artwork ever fails to load */
+.scene svg{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
+.scene .photo{
+  position:absolute;inset:0;z-index:1;
+  background:var(--bg-image) var(--bg-focus)/cover no-repeat;
+}
+/* Just enough shading for the chrome to read — the artwork carries its own
+   colour, so this stays out of its way. */
+.wash{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:
+    linear-gradient(to top,    rgba(26,7,5,.80) 0%, rgba(26,7,5,.34) 22%, transparent 46%),
+    linear-gradient(to bottom, rgba(20,6,6,.52) 0%, rgba(20,6,6,.14) 12%, transparent 24%);
+}
+.vignette{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  box-shadow:inset 0 0 220px 40px rgba(28,6,4,.34);
+}
+.grain{
+  position:fixed;inset:0;z-index:4;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+}
+
+/* ══════════ CHROME ══════════ */
+.ui{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;
+    padding:26px clamp(18px,3.4vw,44px);
+    padding-top:max(26px,env(safe-area-inset-top));pointer-events:none}
+.ui > *{pointer-events:auto}
+
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.clock{font-size:15px;font-weight:400;letter-spacing:.01em;opacity:.92;
+       text-shadow:0 2px 12px rgba(0,0,0,.5);white-space:nowrap;min-width:88px}
+.online{display:flex;align-items:center;gap:9px;font-size:15px;opacity:.95;
+        text-shadow:0 2px 12px rgba(0,0,0,.5);white-space:nowrap}
+.pip{width:9px;height:9px;border-radius:50%;background:#22c55e;flex:none;
+     box-shadow:0 0 10px rgba(34,197,94,.85);animation:blink 3s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+.out{display:flex;gap:26px;min-width:88px;justify-content:flex-end}
+.out a{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;
+       opacity:.9;transition:opacity .2s;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.out a:hover{opacity:1}
+.out svg{width:17px;height:17px;flex:none}
+.out .arw{width:11px;height:11px;opacity:.7}
+
+.stage{flex:1}
+
+/* ══════════ PLAYER PILL ══════════ */
+.dock{position:fixed;left:0;right:0;bottom:clamp(22px,4.2vh,46px);z-index:6;
+      display:flex;flex-direction:column;align-items:center;gap:12px;
+      padding:0 16px;padding-bottom:env(safe-area-inset-bottom)}
+.pill{
+  width:min(94vw,730px);
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  gap:clamp(14px,2vw,22px);
+  padding:14px clamp(16px,2vw,22px);
+  border-radius:999px;
+  background:rgba(74,18,12,.42);
+  backdrop-filter:blur(26px) saturate(1.3);
+  -webkit-backdrop-filter:blur(26px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 26px 70px -22px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14);
+}
+.cover{
+  width:clamp(54px,7vw,68px);aspect-ratio:1;border-radius:50%;overflow:hidden;flex:none;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 6px 20px rgba(0,0,0,.45);
+}
+.cover img{width:100%;height:100%;object-fit:cover;transform:scale(1.36);
+           opacity:0;transition:opacity .5s ease;display:block}
+.cover img.on{opacity:1}
+body.playing .cover{animation:rot 22s linear infinite}
+@keyframes rot{to{rotate:360deg}}
+
+.meta{min-width:0}
+.ttl{font-size:clamp(14.5px,1.55vw,18px);font-weight:600;line-height:1.3;
+     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+.art{font-size:clamp(12px,1.2vw,13.5px);font-weight:400;opacity:.66;
+     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}
+.seek{position:relative;height:14px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+.seek .rail{position:absolute;left:0;right:0;height:3px;border-radius:2px;background:rgba(255,255,255,.22)}
+.seek .fill{position:absolute;left:0;height:3px;border-radius:2px;background:#fff;width:0;transition:width .2s linear}
+.seek .dot{position:absolute;left:0;width:9px;height:9px;border-radius:50%;background:#fff;
+           translate:-50% 0;transition:left .2s linear;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+.time{font-size:11.5px;opacity:.6;margin-top:5px;font-variant-numeric:tabular-nums}
+
+.keys{display:flex;align-items:center;gap:clamp(10px,1.5vw,18px)}
+.k{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;
+   opacity:.8;transition:opacity .18s,background .18s,transform .1s}
+.k:hover{opacity:1;background:rgba(255,255,255,.12)}
+.k:active{transform:scale(.92)}
+.k svg{width:20px;height:20px;fill:#fff}
+.k.big{width:clamp(48px,5.6vw,58px);height:clamp(48px,5.6vw,58px);
+       background:#fff;opacity:1;box-shadow:0 8px 24px rgba(0,0,0,.42)}
+.k.big:hover{background:#fff;transform:scale(1.05)}
+.k.big svg{fill:#3a0f0a;width:22px;height:22px}
+
+.pill.away{opacity:0;visibility:hidden;pointer-events:none;position:absolute;
+           transition:opacity .35s ease,visibility .35s}
+
+/* ── spotify panel: same glass frame, native widget inside ── */
+.spot{
+  width:min(94vw,730px);
+  border-radius:22px;padding:10px;
+  background:rgba(74,18,12,.42);
+  backdrop-filter:blur(26px) saturate(1.3);
+  -webkit-backdrop-filter:blur(26px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 26px 70px -22px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14);
+  opacity:0;visibility:hidden;position:absolute;pointer-events:none;
+  transition:opacity .35s ease,visibility .35s;
+}
+.spot.here{opacity:1;visibility:visible;position:static;pointer-events:auto}
+.spot iframe{display:block;width:100%;height:352px;border:0;border-radius:14px}
+.spot .hint{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.45;
+            text-align:center;padding:9px 4px 3px}
+
+/* discreet station switcher */
+.stations{display:flex;gap:20px;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+          opacity:.5;transition:opacity .25s}
+.stations:hover{opacity:.95}
+.stations button{opacity:.65;transition:opacity .2s;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.stations button:hover{opacity:1}
+.stations button[aria-current="true"]{opacity:1;border-bottom:1px solid rgba(255,255,255,.85);padding-bottom:3px}
+
+/* ══════════ DOOR ══════════ */
+.door{position:fixed;inset:0;z-index:20;display:grid;place-items:center;text-align:center;
+      padding:24px;background:rgba(20,8,8,.42);
+      transition:opacity .8s ease,visibility .8s}
+.door.open{opacity:0;visibility:hidden;pointer-events:none}
+.door .line{font-size:12.5px;letter-spacing:.34em;text-transform:uppercase;opacity:.72;
+            font-weight:500;text-shadow:0 2px 14px rgba(0,0,0,.7)}
+.enter{margin-top:26px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;font-weight:500;
+       color:#3a0f0a;background:#fff;padding:16px 38px;border-radius:999px;
+       box-shadow:0 16px 44px rgba(0,0,0,.5);transition:letter-spacing .35s,transform .2s}
+.enter:hover{letter-spacing:.4em;transform:translateY(-2px)}
+
+#yt{position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;top:-200px;left:-200px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:640px){
+  .clock,.online span:last-child{font-size:13px}
+  .out a span{display:none}
+  .out{gap:16px;min-width:0}
+  .clock{min-width:0}
+  .pill{grid-template-columns:auto 1fr;gap:12px;border-radius:26px;padding:14px 16px}
+  .keys{grid-column:1/-1;justify-content:center;margin-top:2px}
+  .stations{gap:12px;font-size:9.5px}
+  .spot iframe{height:232px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ THE STREET ═══════════════
+     Hand-built flat-vector scene: an Irani café storefront in Bombay
+     at last light. Everything below sits under a red wash + grain,
+     the same treatment the reference sites use.
+================================================== -->
+<div class="scene" aria-hidden="true">
+  <div class="photo"></div>
+  <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#28304f"/>
+        <stop offset="46%" stop-color="#7b4a58"/>
+        <stop offset="78%" stop-color="#d98a52"/>
+        <stop offset="100%" stop-color="#e8a862"/>
+      </linearGradient>
+      <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#6b4038"/><stop offset="100%" stop-color="#2e1a19"/>
+      </linearGradient>
+      <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+        <stop offset="0%" stop-color="#f6c169" stop-opacity=".85"/>
+        <stop offset="100%" stop-color="#f6c169" stop-opacity="0"/>
+      </radialGradient>
+
+      <!-- people, drawn once, reused -->
+      <symbol id="sit" viewBox="-30 -125 60 125">
+        <circle cx="0" cy="-108" r="13" fill="currentColor"/>
+        <path d="M-12-93 h24 l6 44 h-36 z" fill="currentColor"/>
+        <path d="M-16-49 h34 v11 h-34 z" fill="currentColor"/>
+        <path d="M8-49 h10 v45 h-10 z" fill="currentColor"/>
+        <path d="M-14-88 l-8 34 8 4 10-32 z" fill="currentColor"/>
+      </symbol>
+      <symbol id="stand" viewBox="-26 -156 52 156">
+        <circle cx="0" cy="-140" r="13" fill="currentColor"/>
+        <path d="M-13-125 h26 l5 60 h-36 z" fill="currentColor"/>
+        <path d="M-11-65 h9 v63 h-9 z" fill="currentColor"/>
+        <path d="M3-65 h9 v63 h-9 z" fill="currentColor"/>
+        <path d="M-14-120 l-9 52 8 2 11-50 z" fill="currentColor"/>
+      </symbol>
+      <symbol id="chair" viewBox="0 0 60 74">
+        <path d="M6 30 h48 v6 H6z M8 36 l4 38 h6 l-3-38z M46 36 l-4 38h6l4-38z"
+              fill="currentColor"/>
+        <path d="M10 30 C8 4 52 4 50 30" fill="none" stroke="currentColor" stroke-width="5"/>
+        <path d="M18 28 C18 12 42 12 42 28" fill="none" stroke="currentColor" stroke-width="3.5"/>
+      </symbol>
+      <symbol id="table" viewBox="0 0 130 74">
+        <ellipse cx="65" cy="10" rx="63" ry="10" fill="currentColor"/>
+        <rect x="59" y="14" width="12" height="52" fill="currentColor"/>
+        <ellipse cx="65" cy="70" rx="30" ry="6" fill="currentColor"/>
+      </symbol>
+      <symbol id="palm" viewBox="-120 -230 240 230">
+        <g fill="currentColor">
+          <path d="M-4 0 l8 0 6-190 -20 0z"/>
+          <path d="M0-186 C-52-212 -104-206 -118-176 C-78-190 -36-186 0-170z"/>
+          <path d="M0-186 C52-212 104-206 118-176 C78-190 36-186 0-170z"/>
+          <path d="M0-192 C-34-228 -76-232 -98-214 C-56-216 -24-204 0-182z"/>
+          <path d="M0-192 C34-228 76-232 98-214 C56-216 24-204 0-182z"/>
+          <path d="M0-196 C-14-230 6-232 22-226 C8-218 4-208 2-190z"/>
+        </g>
+      </symbol>
+      <symbol id="leaf" viewBox="-90 -200 180 200">
+        <path d="M0 0 C-56-40 -84-118 -60-190 C-22-142 22-142 60-190 C84-118 56-40 0 0z"
+              fill="currentColor"/>
+        <path d="M0 0 L0-176" stroke="#2c4433" stroke-width="4" fill="none" opacity=".55"/>
+      </symbol>
+    </defs>
+
+    <!-- sky + distant city -->
+    <rect width="1600" height="900" fill="url(#sky)"/>
+    <g fill="#8a5a5c" opacity=".72">
+      <rect x="0"    y="300" width="150" height="330"/>
+      <rect x="140"  y="352" width="120" height="278"/>
+      <rect x="1180" y="286" width="140" height="344"/>
+      <rect x="1310" y="340" width="118" height="290"/>
+      <rect x="1420" y="300" width="180" height="330"/>
+    </g>
+    <g fill="#6d4448" opacity=".8">
+      <rect x="1246" y="240" width="52" height="60"/>
+      <rect x="1462" y="252" width="46" height="52"/>
+      <rect x="86"   y="256" width="44" height="48"/>
+    </g>
+    <g fill="#e9c489" opacity=".5">
+      <rect x="1196" y="330" width="16" height="22"/><rect x="1228" y="330" width="16" height="22"/>
+      <rect x="1196" y="382" width="16" height="22"/><rect x="1268" y="382" width="16" height="22"/>
+      <rect x="1444" y="356" width="16" height="22"/><rect x="1500" y="356" width="16" height="22"/>
+      <rect x="30"   y="352" width="16" height="22"/><rect x="82"  y="352" width="16" height="22"/>
+    </g>
+
+    <!-- greenery -->
+    <g style="color:#3a5a3f"><use href="#palm" x="1400" y="470" width="320" height="308"/></g>
+    <g style="color:#4a6c46"><use href="#palm" x="1250" y="500" width="260" height="250"/></g>
+    <g style="color:#33502f"><use href="#leaf" x="1470" y="900" width="300" height="333" transform="rotate(9 1470 900)"/></g>
+    <g style="color:#3d5f38"><use href="#leaf" x="1350" y="920" width="250" height="278" transform="rotate(-14 1350 920)"/></g>
+    <g style="color:#2f4a30"><use href="#leaf" x="70"  y="470" width="230" height="256" transform="rotate(20 70 470)"/></g>
+    <g style="color:#3b5b3a"><use href="#leaf" x="-20" y="560" width="270" height="300" transform="rotate(-6 -20 560)"/></g>
+
+    <!-- café block -->
+    <rect x="120" y="250" width="1060" height="500" fill="#b8412f"/>
+    <rect x="120" y="250" width="1060" height="26"  fill="#8f2f22"/>
+    <rect x="120" y="286" width="1060" height="92"  fill="#a53727"/>
+    <!-- signboard -->
+    <rect x="196" y="300" width="908" height="64" fill="#7c2418" opacity=".92"/>
+    <g fill="#f0d9b0" opacity=".5">
+      <rect x="236" y="322" width="86"  height="20"/><rect x="342" y="322" width="52" height="20"/>
+      <rect x="414" y="322" width="120" height="20"/><rect x="554" y="322" width="64" height="20"/>
+      <rect x="640" y="322" width="98"  height="20"/><rect x="758" y="322" width="46" height="20"/>
+      <rect x="826" y="322" width="130" height="20"/><rect x="976" y="322" width="72" height="20"/>
+    </g>
+    <!-- mint interior wall visible through the front -->
+    <rect x="200" y="400" width="880" height="350" fill="#1d1210"/>
+    <rect x="230" y="424" width="820" height="240" fill="#5f7f68" opacity=".55"/>
+    <ellipse cx="640" cy="530" rx="330" ry="180" fill="url(#glow)" opacity=".55"/>
+    <!-- pillars -->
+    <g fill="#a53727">
+      <rect x="378" y="378" width="34" height="372"/>
+      <rect x="620" y="378" width="34" height="372"/>
+      <rect x="862" y="378" width="34" height="372"/>
+      <rect x="176" y="378" width="34" height="372"/>
+      <rect x="1064" y="378" width="34" height="372"/>
+    </g>
+    <!-- inside: mirror, shelf, portrait -->
+    <rect x="252" y="446" width="90" height="120" fill="#2b3b34" opacity=".9"/>
+    <rect x="262" y="456" width="70" height="100" fill="#8fb49b" opacity=".35"/>
+    <rect x="690" y="452" width="150" height="16" fill="#3a2a22"/>
+    <g fill="#e7bf7e" opacity=".7">
+      <rect x="700" y="428" width="14" height="24"/><rect x="722" y="432" width="14" height="20"/>
+      <rect x="744" y="426" width="14" height="26"/><rect x="766" y="434" width="14" height="18"/>
+      <rect x="788" y="430" width="14" height="22"/>
+    </g>
+    <rect x="944" y="440" width="76" height="96" fill="#3a281f"/>
+    <rect x="954" y="450" width="56" height="76" fill="#7c5a3c"/>
+    <!-- ceiling fan inside (turns with the music) -->
+    <g id="fan" style="transform-origin:640px 424px" opacity=".65">
+      <rect x="636" y="400" width="8" height="22" fill="#241814"/>
+      <ellipse cx="640" cy="426" rx="9" ry="7" fill="#241814"/>
+      <path d="M640 424 L560 416 L560 432 z" fill="#2c1d18"/>
+      <path d="M640 424 L720 416 L720 432 z" fill="#2c1d18"/>
+      <path d="M640 424 L610 448 L666 448 z" fill="#2c1d18" opacity=".7"/>
+    </g>
+
+    <!-- awning -->
+    <path d="M120 378 L1180 378 L1236 440 L64 440 z" fill="#d94a35"/>
+    <g fill="#f0dcbc">
+      <path d="M256 378 L316 378 L344 440 L278 440 z"/>
+      <path d="M412 378 L472 378 L494 440 L428 440 z"/>
+      <path d="M568 378 L628 378 L644 440 L578 440 z"/>
+      <path d="M724 378 L784 378 L794 440 L728 440 z"/>
+      <path d="M880 378 L940 378 L944 440 L878 440 z"/>
+      <path d="M1036 378 L1096 378 L1094 440 L1028 440 z"/>
+    </g>
+    <path d="M64 440 L1236 440 L1236 452 L64 452 z" fill="#a83525"/>
+    <g fill="#c34031">
+      <path d="M64 452 l26 0 -13 20z"/><path d="M144 452 l26 0 -13 20z"/><path d="M224 452 l26 0 -13 20z"/>
+      <path d="M304 452 l26 0 -13 20z"/><path d="M384 452 l26 0 -13 20z"/><path d="M464 452 l26 0 -13 20z"/>
+      <path d="M544 452 l26 0 -13 20z"/><path d="M624 452 l26 0 -13 20z"/><path d="M704 452 l26 0 -13 20z"/>
+      <path d="M784 452 l26 0 -13 20z"/><path d="M864 452 l26 0 -13 20z"/><path d="M944 452 l26 0 -13 20z"/>
+      <path d="M1024 452 l26 0 -13 20z"/><path d="M1104 452 l26 0 -13 20z"/><path d="M1184 452 l26 0 -13 20z"/>
+    </g>
+
+    <!-- street -->
+    <rect x="0" y="740" width="1600" height="160" fill="url(#road)"/>
+    <rect x="0" y="740" width="1600" height="14" fill="#7a4a3c" opacity=".8"/>
+
+    <!-- inside seating -->
+    <g style="color:#3a2a24"><use href="#table" x="440" y="560" width="110" height="63"/></g>
+    <g style="color:#d7cbb4"><use href="#sit"   x="416" y="672" width="54" height="112"/></g>
+    <g style="color:#8d5a3c"><use href="#sit"   x="560" y="672" width="54" height="112" transform="scale(-1 1) translate(-1174 0)"/></g>
+    <g style="color:#2f4e57"><use href="#stand" x="920" y="690" width="46" height="138"/></g>
+
+    <!-- outside seating on the footpath -->
+    <g style="color:#3d2a22">
+      <use href="#table" x="228" y="646" width="130" height="74"/>
+      <use href="#table" x="712" y="640" width="130" height="74"/>
+    </g>
+    <g style="color:#2b1c17">
+      <use href="#chair" x="196" y="654" width="58" height="72"/>
+      <use href="#chair" x="366" y="654" width="58" height="72"/>
+      <use href="#chair" x="866" y="648" width="58" height="72"/>
+    </g>
+    <!-- chai glasses -->
+    <g fill="#e8d7b2" opacity=".9">
+      <path d="M268 630 l3 22 h11 l3-22z"/><path d="M300 632 l3 20 h11 l3-20z"/>
+      <path d="M752 624 l3 22 h11 l3-22z"/>
+    </g>
+    <g style="color:#e2d7c2"><use href="#sit"   x="212" y="740" width="60" height="125"/></g>
+    <g style="color:#9c3f34"><use href="#sit"   x="386" y="740" width="60" height="125" transform="scale(-1 1) translate(-832 0)"/></g>
+    <g style="color:#c98a4b"><use href="#sit"   x="884" y="734" width="60" height="125" transform="scale(-1 1) translate(-1828 0)"/></g>
+    <g style="color:#f0e6d2"><use href="#stand" x="640" y="770" width="52" height="156"/></g>
+    <g style="color:#42606a"><use href="#stand" x="1112" y="778" width="52" height="156"/></g>
+    <g style="color:#e9e2d0"><use href="#stand" x="1176" y="784" width="50" height="150"/></g>
+
+    <!-- tea kettle stand on the left -->
+    <rect x="60" y="672" width="112" height="10" fill="#3d2a22"/>
+    <rect x="70" y="682" width="8" height="58" fill="#3d2a22"/>
+    <rect x="154" y="682" width="8" height="58" fill="#3d2a22"/>
+    <path d="M92 636 h44 l6 36 h-56z" fill="#8d6b3f"/>
+    <path d="M136 646 c18 2 18 18 2 20" fill="none" stroke="#8d6b3f" stroke-width="6"/>
+    <path d="M114 636 c-12-12 12-12 0-22" fill="none" stroke="#c9b48a" stroke-width="4" opacity=".5"/>
+    <g style="color:#7d4a33"><use href="#stand" x="112" y="740" width="50" height="150"/></g>
+
+    <!-- foreground: bicycle + crates -->
+    <g stroke="#241512" stroke-width="7" fill="none" opacity=".92">
+      <circle cx="1330" cy="806" r="52"/><circle cx="1500" cy="806" r="52"/>
+      <path d="M1330 806 L1392 736 L1466 736 L1500 806 M1392 736 L1424 806 M1466 736 L1452 700 L1420 700"/>
+    </g>
+    <g fill="#5c3a2a" opacity=".9">
+      <rect x="1206" y="768" width="76" height="52"/><rect x="1216" y="740" width="56" height="30"/>
+    </g>
+    <g fill="#d2803a" opacity=".85">
+      <circle cx="1230" cy="756" r="9"/><circle cx="1250" cy="752" r="9"/><circle cx="1244" cy="766" r="9"/>
+    </g>
+  </svg>
+</div>
+
+<div class="wash"></div>
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<!-- ═══════════════ INTERFACE ═══════════════ -->
+<div class="ui">
+  <div class="bar">
+    <div class="clock" id="clock">&nbsp;</div>
+    <div class="online"><span class="pip"></span><span><b id="count">—</b> online</span></div>
+    <nav class="out">
+      <a id="spotify" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.6 14.4a.62.62 0 01-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.62.62 0 11-.28-1.22c3.81-.87 7.08-.5 9.72 1.11.29.18.38.56.21.86zm1.23-2.73a.78.78 0 01-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 11-.45-1.49c3.63-1.1 8.15-.56 11.24 1.33.36.23.48.71.25 1.07zm.1-2.84c-3.23-1.92-8.55-2.09-11.63-1.16a.93.93 0 11-.54-1.79c3.54-1.07 9.42-.86 13.13 1.34a.93.93 0 11-.96 1.6z"/></svg>
+        <span>Spotify</span>
+        <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+      <a id="ytm" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="#FF0033"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 17.4a7.4 7.4 0 110-14.8 7.4 7.4 0 010 14.8zM9.9 8.5l6 3.5-6 3.5z"/></svg>
+        <span>YT Music</span>
+        <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </nav>
+  </div>
+
+  <div class="stage"></div>
+</div>
+
+<!-- ═══════════════ PLAYER ═══════════════ -->
+<div class="dock">
+  <div class="pill">
+    <div class="cover"><img id="cover" alt=""></div>
+    <div class="meta">
+      <div class="ttl" id="title">Opening up…</div>
+      <div class="art" id="artist">&nbsp;</div>
+      <div class="seek" id="seek" role="slider" tabindex="0" aria-label="Seek"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="rail"></div><div class="fill" id="fill"></div><div class="dot" id="dot"></div>
+      </div>
+      <div class="time"><span id="cur">0:00</span> / <span id="dur">0:00</span></div>
+    </div>
+    <div class="keys">
+      <button class="k" id="prev" aria-label="Previous track">
+        <svg viewBox="0 0 24 24"><path d="M6 6h2.5v12H6zm12.5 0v12L9 12z"/></svg>
+      </button>
+      <button class="k big" id="play" aria-label="Play">
+        <svg id="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="k" id="next" aria-label="Next track">
+        <svg viewBox="0 0 24 24"><path d="M15.5 6H18v12h-2.5zM5.5 6v12L15 12z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="spot" id="spot">
+    <div id="spotMount"></div>
+    <div class="hint">Log in to Spotify for full tracks</div>
+  </div>
+
+  <nav class="stations" id="stations" aria-label="Stations">
+    <button data-s="0" aria-current="true">old hindi</button>
+    <button data-s="1">lofi</button>
+    <button data-s="2">sitar</button>
+    <button data-s="3">spotify</button>
+  </nav>
+</div>
+
+<!-- ═══════════════ DOOR ═══════════════ -->
+<div class="door" id="door">
+  <div>
+    <div class="line">the songs that play at Indian cafés</div>
+    <button class="enter" id="enter">Come in</button>
+  </div>
+</div>
+
+<div id="yt"></div>
+<div class="sr" role="status" aria-live="polite" id="live"></div>
+
+<script>
+/* Playback runs on the YouTube IFrame Player API — nothing is hosted here,
+   every track streams from its rights holder's own channel. */
+
+const STATIONS = [
+  { list:'PLP7LBOIQKXnC-LDzuYY7o9kX80WTdjE_t',            /* Saregama · old Hindi, 548 tracks */
+    sp:'https://open.spotify.com/search/purane%20gaane/playlists' },
+  { list:'PLinVjP-aRmluqhaUwqzPf81vg1gC1VYnf',            /* Tips · Hindi lofi, 286 tracks   */
+    sp:'https://open.spotify.com/search/hindi%20lofi/playlists' },
+  { list:'PLqKfO8peuae3xOZmUVu12Ol736BDq6aKv',            /* sitar instrumental, 24 tracks   */
+    sp:'https://open.spotify.com/search/sitar%20instrumental/playlists' },
+  { spotify:'4Wgb1FsjIBwtAclf3oM4v8',                     /* your own Spotify playlist       */
+    sp:'https://open.spotify.com/playlist/4Wgb1FsjIBwtAclf3oM4v8' },
+];
+
+const $ = id => document.getElementById(id);
+let player, ready = false, station = 0, vid = null, scrub = false, misses = 0;
+
+/* ── clock ─────────────────────────────── */
+setInterval(tick, 1000); tick();
+function tick(){
+  $('clock').textContent = new Date()
+    .toLocaleTimeString('en-IN', {hour:'numeric', minute:'2-digit'})
+    .toLowerCase().replace(/\s/,' ');
+}
+
+/* ── how full the café is ──────────────────
+   Follows the clock in your timezone and drifts. Local, not a
+   live headcount — a real one needs a websocket server. */
+setInterval(room, 5000); room();
+function room(){
+  const d = new Date(), h = d.getHours() + d.getMinutes()/60;
+  const peak = t => Math.exp(-((h-t)**2)/3.4);
+  const n = 6 + 24*peak(10.5) + 32*peak(17.5) + 16*peak(21.5)
+          + 3*Math.sin(Date.now()/47000) + 2*Math.sin(Date.now()/11000);
+  $('count').textContent = Math.max(3, Math.round(n));
+}
+
+/* ── youtube ───────────────────────────── */
+const s = document.createElement('script');
+s.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(s);
+
+window.onYouTubeIframeAPIReady = () => {
+  player = new YT.Player('yt', {
+    host:'https://www.youtube-nocookie.com',
+    playerVars:{ listType:'playlist', list:STATIONS[0].list, playsinline:1, controls:0, origin:location.origin },
+    events:{
+      onReady(){ ready = true; player.setVolume(75); player.setShuffle(true); links(); },
+      onStateChange(e){
+        const P = YT.PlayerState;
+        document.body.classList.toggle('playing', e.data === P.PLAYING);
+        icon(e.data === P.PLAYING);
+        if (e.data === P.PLAYING || e.data === P.BUFFERING) read();
+        if (e.data === P.ENDED) player.nextVideo();
+      },
+      /* region-locked or embed-disabled video: step over it */
+      onError(){
+        if (++misses > 8){ $('title').textContent = 'Kitchen\u2019s shut \u2014 try another station'; return; }
+        setTimeout(() => player.nextVideo(), 350);
+      }
+    }
+  });
+};
+
+function read(){
+  const d = player.getVideoData && player.getVideoData();
+  if (!d || !d.video_id || d.video_id === vid) return;
+  vid = d.video_id; misses = 0;
+
+  const { title, artist } = tidy(d.title || '', d.author || '');
+  $('title').textContent  = title;
+  $('artist').textContent = artist;
+  $('live').textContent   = `Now playing: ${title} \u2014 ${artist}`;
+
+  const img = $('cover'); img.classList.remove('on');
+  const hi = `https://i.ytimg.com/vi/${vid}/maxresdefault.jpg`;
+  const lo = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+  const p = new Image();
+  p.onload  = () => img.src = p.naturalWidth > 200 ? hi : lo;
+  p.onerror = () => img.src = lo;
+  p.src = hi;
+  img.onload = () => img.classList.add('on');
+}
+
+/* YouTube titles carry freight: "Song | Film | Singer (Lyrical) 4K".
+   Strip the freight, keep the song. */
+function tidy(raw, channel){
+  const junk = /\b(official|lyrical?|lyrics|video song|full (video|song)|audio|hd|4k|1080p|remastered|jukebox|music video|visuali[sz]er)\b/i;
+  const s = raw.replace(/\([^()]*\)|\[[^\[\]]*\]/g, m => junk.test(m) ? '' : m)
+               .replace(/\s{2,}/g,' ').trim();
+  const parts = s.split(/\s*[|｜]\s*/).map(x => x.trim()).filter(Boolean);
+  let title = parts[0] || s, artist = '';
+  for (let i = 1; i < parts.length; i++)
+    if (parts[i].length <= 44 && !junk.test(parts[i])) { artist = parts[i]; break; }
+  if (!artist) artist = channel;
+  artist = artist.replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'')
+                 .replace(/\bOfficial\b/ig,'').replace(/\s{2,}/g,' ').trim();
+  return { title: title.replace(/[-–—\s]+$/,'').trim() || 'Untitled', artist };
+}
+
+/* ── transport ─────────────────────────── */
+function icon(playing){
+  $('icon').innerHTML = playing ? '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+  $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+}
+function toggle(){
+  if (!ready) return;
+  player.getPlayerState() === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
+}
+$('play').onclick = toggle;
+$('next').onclick = () => ready && player.nextVideo();
+$('prev').onclick = () => { if (!ready) return;
+  player.getCurrentTime() > 3 ? player.seekTo(0, true) : player.previousVideo(); };
+
+setInterval(() => {
+  if (!ready || scrub || !player.getDuration) return;
+  const d = player.getDuration(), t = player.getCurrentTime();
+  if (!d) return;
+  paint(t/d); $('cur').textContent = mmss(t); $('dur').textContent = mmss(d);
+}, 250);
+
+const mmss = x => (x = Math.max(0, Math.floor(x||0)), Math.floor(x/60)+':'+String(x%60).padStart(2,'0'));
+function paint(p){
+  p = Math.min(1, Math.max(0, p||0));
+  $('fill').style.width = p*100+'%';
+  $('dot').style.left   = p*100+'%';
+  $('seek').setAttribute('aria-valuenow', Math.round(p*100));
+}
+const at = x => { const r = $('seek').getBoundingClientRect();
+                  const p = Math.min(1, Math.max(0, (x-r.left)/r.width)); paint(p); return p; };
+$('seek').addEventListener('pointerdown', e => {
+  if (!ready) return; scrub = true; $('seek').setPointerCapture(e.pointerId); at(e.clientX); });
+$('seek').addEventListener('pointermove', e => scrub && at(e.clientX));
+$('seek').addEventListener('pointerup', e => {
+  if (!scrub) return; player.seekTo(at(e.clientX)*player.getDuration(), true); scrub = false; });
+$('seek').addEventListener('keydown', e => {
+  if (!ready) return; const d = player.getDuration(); if (!d) return;
+  if (e.key === 'ArrowRight'){ player.seekTo(Math.min(d, player.getCurrentTime()+5), true); e.preventDefault(); }
+  if (e.key === 'ArrowLeft' ){ player.seekTo(Math.max(0, player.getCurrentTime()-5), true); e.preventDefault(); }
+});
+
+/* ── stations ──────────────────────────── */
+$('stations').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  tune(Number(b.dataset.s));
+});
+function tune(i){
+  station = i; links();
+  document.querySelectorAll('#stations button').forEach(b =>
+    b.setAttribute('aria-current', String(Number(b.dataset.s) === i)));
+
+  /* Spotify runs in its own widget — swap the pill out for it and
+     stop YouTube so two things aren't playing over each other. */
+  if (STATIONS[i].spotify){
+    mountSpotify(STATIONS[i].spotify);
+    document.querySelector('.pill').classList.add('away');
+    $('spot').classList.add('here');
+    if (ready) player.pauseVideo();
+    document.body.classList.remove('playing');
+    return;
+  }
+
+  $('spot').classList.remove('here');
+  document.querySelector('.pill').classList.remove('away');
+  stopSpotify();
+
+  if (!ready) return;
+  vid = null; misses = 0;
+  $('title').textContent = 'Changing the record…'; $('artist').textContent = '';
+  player.loadPlaylist({ listType:'playlist', list:STATIONS[i].list });
+  player.setShuffle(true);
+  setTimeout(() => player.playVideoAt(Math.floor(Math.random()*20)), 400);
+}
+function links(){
+  const s = STATIONS[station];
+  if (s.list) $('ytm').href = 'https://music.youtube.com/playlist?list=' + s.list;
+  /* the header link is the café's own Spotify home, whatever's playing */
+  $('spotify').href = 'https://open.spotify.com/playlist/4Wgb1FsjIBwtAclf3oM4v8';
+}
+
+/* Built on first use so the widget doesn't load with the page. */
+function mountSpotify(id){
+  const mount = $('spotMount');
+  if (mount.firstChild) return;
+  const f = document.createElement('iframe');
+  f.src = `https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0`;
+  f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+  f.setAttribute('allowfullscreen','');
+  f.loading = 'lazy';
+  f.title = 'Spotify playlist';
+  mount.appendChild(f);
+}
+/* Reloading the src is the only way to silence a cross-origin embed. */
+function stopSpotify(){
+  const f = $('spotMount').firstChild;
+  if (f) f.src = f.src;
+}
+
+/* ── the fan turns with the music ──────── */
+let angle = 0;
+(function spin(){
+  const on = document.body.classList.contains('playing');
+  angle = (angle + (on ? 7 : 0.35)) % 360;
+  const f = document.getElementById('fan');
+  if (f) f.style.transform = `rotate(${angle}deg)`;
+  requestAnimationFrame(spin);
+})();
+
+/* ── door ──────────────────────────────── */
+$('enter').onclick = () => {
+  $('door').classList.add('open');
+  const go = setInterval(() => {
+    if (!ready) return;
+    clearInterval(go);
+    player.setShuffle(true);
+    player.playVideoAt(Math.floor(Math.random()*30));
+  }, 120);
+};
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space'){ e.preventDefault(); toggle(); }
+  if (e.key.toLowerCase() === 'n') ready && player.nextVideo();
+  if (e.key.toLowerCase() === 'p') ready && player.previousVideo();
+});
+</script>
+</body>
+</html>
